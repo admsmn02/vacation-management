@@ -13,4 +13,6 @@ export const env = {
   dbUser: process.env.DB_USER || "vacation_user",
   dbPassword: process.env.DB_PASSWORD || "vacation_password",
   dbName: process.env.DB_NAME || "vacation_db",
+  jwtSecret: process.env.JWT_SECRET || "change_me",
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
 };
