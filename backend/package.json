@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "start:prod": "npm run build && npm run start",
+    "seed:demo-users": "npm run build && node dist/seeds/demo-users.seed.js",
     "typeorm": "typeorm-ts-node-commonjs -d src/config/data-source.ts",
     "migration:generate": "npm run typeorm -- migration:generate src/migrations/AutoMigration",
     "migration:run": "npm run typeorm -- migration:run",
