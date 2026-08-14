@@ -123,19 +123,25 @@ Important:
 
 ## Migrations
 
-Run migrations using existing backend scripts:
+For a fresh installation, apply existing migrations with:
 
 ```bash
 cd backend
 npm run migration:run
 ```
 
-Other migration scripts:
+Additional migration scripts:
 
 ```bash
 npm run migration:generate
 npm run migration:revert
 ```
+
+Usage guidance:
+
+- `migration:generate` is only for developers who changed TypeORM entities/schema and need to create a new migration file.
+- `migration:revert` is only for intentionally reverting the most recently applied migration.
+- `migration:generate` and `migration:revert` are **not required during normal installation**.
 
 ## Seed Data
 
@@ -150,7 +156,16 @@ npm run seed:demo-users
 
 What it does:
 
-- Ensures demo requester and validator accounts exist.
+- Creates or ensures exactly two demo accounts for local testing:
+  - 1 REQUESTER account
+  - 1 VALIDATOR account
+
+Demo/local credentials (testing only):
+
+| Role      | Email                   | Password       |
+| --------- | ----------------------- | -------------- |
+| Requester | `requester@example.com` | `Password123!` |
+| Validator | `validator@example.com` | `Password123!` |
 
 2. Mock data:
 
@@ -167,15 +182,6 @@ What it does:
 - Includes PENDING / APPROVED / REJECTED statuses
 - Includes rejection comments for rejected requests
 - Populates data across multiple months for filters, pagination, statuses, and team planning demonstrations
-
-Demo/local accounts (fake credentials):
-
-- Requester:
-  - email: `requester@example.com`
-  - password: `Password123!`
-- Validator:
-  - email: `validator@example.com`
-  - password: `Password123!`
 
 ## Running the Application
 
