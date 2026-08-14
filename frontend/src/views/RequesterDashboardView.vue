@@ -156,15 +156,28 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6">
-    <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 class="text-xl font-semibold">Create Vacation Request</h2>
-      <p class="mt-2 text-sm text-slate-600">
+    <header class="space-y-1">
+      <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+        Requester Dashboard
+      </h1>
+      <p class="text-sm text-slate-600">
+        Create and track your vacation requests.
+      </p>
+    </header>
+
+    <section
+      class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+    >
+      <h2 class="text-lg font-semibold text-slate-900">
+        Create Vacation Request
+      </h2>
+      <p class="mt-1.5 text-sm text-slate-600">
         Submit a new vacation request as a requester.
       </p>
 
-      <form class="mt-6 space-y-4" @submit.prevent="submitVacationRequest">
+      <form class="mt-5 space-y-4" @submit.prevent="submitVacationRequest">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div class="space-y-1">
+          <div class="space-y-1.5">
             <label
               for="request-start-date"
               class="block text-sm font-medium text-slate-700"
@@ -181,7 +194,7 @@ onMounted(async () => {
             />
           </div>
 
-          <div class="space-y-1">
+          <div class="space-y-1.5">
             <label
               for="request-end-date"
               class="block text-sm font-medium text-slate-700"
@@ -199,7 +212,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="space-y-1">
+        <div class="space-y-1.5">
           <label
             for="request-reason"
             class="block text-sm font-medium text-slate-700"
@@ -215,10 +228,16 @@ onMounted(async () => {
           />
         </div>
 
-        <p v-if="submitError" class="text-sm text-red-600">
+        <p
+          v-if="submitError"
+          class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
           {{ submitError }}
         </p>
-        <p v-if="submitSuccess" class="text-sm text-emerald-700">
+        <p
+          v-if="submitSuccess"
+          class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+        >
           {{ submitSuccess }}
         </p>
 
@@ -228,43 +247,60 @@ onMounted(async () => {
       </form>
     </section>
 
-    <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 class="text-xl font-semibold">My Vacation Requests</h2>
-      <p class="mt-2 text-sm text-slate-600">
+    <section
+      class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+    >
+      <h2 class="text-lg font-semibold text-slate-900">My Vacation Requests</h2>
+      <p class="mt-1.5 text-sm text-slate-600">
         Review your submitted requests and their current status.
       </p>
 
-      <div v-if="isLoadingRequests" class="mt-6 text-sm text-slate-600">
+      <div
+        v-if="isLoadingRequests"
+        class="mt-5 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+      >
         Loading requests...
       </div>
 
-      <p v-else-if="requestsError" class="mt-6 text-sm text-red-600">
+      <p
+        v-else-if="requestsError"
+        class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      >
         {{ requestsError }}
       </p>
 
       <p
         v-else-if="vacationRequests.length === 0"
-        class="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600"
+        class="mt-5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600"
       >
         You have no vacation requests yet.
       </p>
 
-      <div v-else class="mt-6 overflow-x-auto">
+      <div
+        v-else
+        class="mt-5 overflow-x-auto rounded-lg border border-slate-200"
+      >
         <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-          <thead class="bg-slate-50 text-slate-700">
+          <thead
+            class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600"
+          >
             <tr>
-              <th class="px-3 py-2 font-medium">Start Date</th>
-              <th class="px-3 py-2 font-medium">End Date</th>
-              <th class="px-3 py-2 font-medium">Reason</th>
-              <th class="px-3 py-2 font-medium">Status</th>
-              <th class="px-3 py-2 font-medium">Comment</th>
+              <th class="px-3 py-2.5 font-medium">Start Date</th>
+              <th class="px-3 py-2.5 font-medium">End Date</th>
+              <th class="px-3 py-2.5 font-medium">Reason</th>
+              <th class="px-3 py-2.5 font-medium">Status</th>
+              <th class="px-3 py-2.5 font-medium">Comment</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-slate-100 bg-white">
             <tr v-for="request in vacationRequests" :key="request.id">
-              <td class="px-3 py-3">{{ formatDate(request.startDate) }}</td>
-              <td class="px-3 py-3">{{ formatDate(request.endDate) }}</td>
-              <td class="px-3 py-3">
+              <td class="whitespace-nowrap px-3 py-3">
+                {{ formatDate(request.startDate) }}
+              </td>
+              <td class="whitespace-nowrap px-3 py-3">
+                {{ formatDate(request.endDate) }}
+              </td>
+              <td class="max-w-[240px] px-3 py-3">
                 {{ request.reason || "-" }}
               </td>
               <td class="px-3 py-3">

@@ -318,13 +318,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-    <h2 class="text-xl font-semibold">Validator Dashboard</h2>
-    <p class="mt-2 text-sm text-slate-600">
+  <section
+    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+  >
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+      Validator Dashboard
+    </h1>
+    <p class="mt-1.5 text-sm text-slate-600">
       Review vacation requests submitted by requesters.
     </p>
 
-    <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
       <div class="space-y-1">
         <label
           for="status-filter"
@@ -370,35 +374,43 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="isLoading" class="mt-6 text-sm text-slate-600">
+    <div
+      v-if="isLoading"
+      class="mt-5 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+    >
       Loading vacation requests...
     </div>
 
-    <p v-else-if="errorMessage" class="mt-6 text-sm text-red-600">
+    <p
+      v-else-if="errorMessage"
+      class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+    >
       {{ errorMessage }}
     </p>
 
     <p
       v-else-if="requests.length === 0"
-      class="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600"
+      class="mt-5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600"
     >
       No vacation requests match the current filters.
     </p>
 
-    <div v-else class="mt-6 overflow-x-auto">
+    <div v-else class="mt-5 overflow-x-auto rounded-lg border border-slate-200">
       <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-        <thead class="bg-slate-50 text-slate-700">
+        <thead
+          class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600"
+        >
           <tr>
-            <th class="px-3 py-2 font-medium">Requester</th>
-            <th class="px-3 py-2 font-medium">Dates</th>
-            <th class="px-3 py-2 font-medium">Reason</th>
-            <th class="px-3 py-2 font-medium">Status</th>
-            <th class="px-3 py-2 font-medium">Comment</th>
-            <th class="px-3 py-2 font-medium">Created</th>
-            <th class="px-3 py-2 font-medium">Actions</th>
+            <th class="px-3 py-2.5 font-medium">Requester</th>
+            <th class="px-3 py-2.5 font-medium">Dates</th>
+            <th class="px-3 py-2.5 font-medium">Reason</th>
+            <th class="px-3 py-2.5 font-medium">Status</th>
+            <th class="px-3 py-2.5 font-medium">Comment</th>
+            <th class="px-3 py-2.5 font-medium">Created</th>
+            <th class="px-3 py-2.5 font-medium">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-100 bg-white">
           <tr v-for="request in requests" :key="request.id">
             <td class="px-3 py-3">
               <p class="font-medium text-slate-900">{{ request.user.name }}</p>
@@ -410,7 +422,7 @@ onMounted(async () => {
               </p>
               <p class="whitespace-nowrap">{{ formatDate(request.endDate) }}</p>
             </td>
-            <td class="max-w-[220px] px-3 py-3">
+            <td class="max-w-[220px] px-3 py-3 text-slate-700">
               <p class="line-clamp-2">{{ request.reason || "-" }}</p>
             </td>
             <td class="px-3 py-3">
@@ -421,12 +433,14 @@ onMounted(async () => {
                 {{ request.status }}
               </span>
             </td>
-            <td class="px-3 py-3 text-slate-600">
+            <td class="max-w-[220px] px-3 py-3 text-slate-600">
               {{
                 request.status === "REJECTED" ? request.comments || "-" : "-"
               }}
             </td>
-            <td class="px-3 py-3">{{ formatDate(request.createdAt) }}</td>
+            <td class="whitespace-nowrap px-3 py-3">
+              {{ formatDate(request.createdAt) }}
+            </td>
             <td class="px-3 py-3 align-top">
               <div v-if="request.status === 'PENDING'" class="relative">
                 <Button
@@ -437,7 +451,7 @@ onMounted(async () => {
                   :disabled="isLoading || isProcessingRequest(request.id)"
                   @click="toggleActionMenu(request.id)"
                 >
-                  Actions
+                  Manage
                 </Button>
 
                 <div
@@ -448,7 +462,10 @@ onMounted(async () => {
                     type="button"
                     class="block w-full rounded px-3 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
                     :disabled="isLoading || isProcessingRequest(request.id)"
-                    @click="approveRequest(request.id)"
+                    @click="
+                      closeActionMenu();
+                      approveRequest(request.id);
+                    "
                   >
                     Approve
                   </button>
@@ -529,7 +546,7 @@ onMounted(async () => {
     </div>
 
     <div
-      class="mt-6 flex items-center justify-between border-t border-slate-200 pt-4"
+      class="mt-5 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <p class="text-sm text-slate-600">
         Page {{ page }} of {{ totalPages }} ({{ total }} total)

@@ -52,13 +52,17 @@ const onSubmit = async (): Promise<void> => {
 
 <template>
   <section
-    class="mx-auto w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+    class="mx-auto w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
   >
-    <h2 class="text-xl font-semibold">Login</h2>
-    <p class="mt-2 text-sm text-slate-600">Sign in to continue.</p>
+    <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
+      Sign in
+    </h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Use your account to access vacation management tools.
+    </p>
 
     <form class="mt-6 space-y-4" @submit.prevent="onSubmit">
-      <div class="space-y-1">
+      <div class="space-y-1.5">
         <label for="email" class="block text-sm font-medium text-slate-700"
           >Email</label
         >
@@ -72,7 +76,7 @@ const onSubmit = async (): Promise<void> => {
         />
       </div>
 
-      <div class="space-y-1">
+      <div class="space-y-1.5">
         <label for="password" class="block text-sm font-medium text-slate-700"
           >Password</label
         >
@@ -86,7 +90,10 @@ const onSubmit = async (): Promise<void> => {
         />
       </div>
 
-      <p v-if="errorMessage" class="text-sm text-red-600">
+      <p
+        v-if="errorMessage"
+        class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+      >
         {{ errorMessage }}
       </p>
 

@@ -91,32 +91,44 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-    <h2 class="text-xl font-semibold">Team Vacation Planning</h2>
-    <p class="mt-2 text-sm text-slate-600">Approved team vacations by month.</p>
+  <section
+    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+  >
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+      Team Vacation Planning
+    </h1>
+    <p class="mt-1.5 text-sm text-slate-600">
+      Approved team vacations grouped by month.
+    </p>
 
-    <div v-if="isLoading" class="mt-6 text-sm text-slate-600">
+    <div
+      v-if="isLoading"
+      class="mt-5 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+    >
       Loading team planning data...
     </div>
 
-    <p v-else-if="errorMessage" class="mt-6 text-sm text-red-600">
+    <p
+      v-else-if="errorMessage"
+      class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+    >
       {{ errorMessage }}
     </p>
 
     <p
       v-else-if="vacations.length === 0"
-      class="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600"
+      class="mt-5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600"
     >
       No approved vacations are currently planned.
     </p>
 
-    <div v-else class="mt-6 space-y-6">
+    <div v-else class="mt-5 space-y-5">
       <div
         v-for="group in groupedVacations"
         :key="group.month"
-        class="rounded-lg border border-slate-200"
+        class="overflow-hidden rounded-lg border border-slate-200"
       >
-        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
           <h3 class="text-sm font-semibold text-slate-800">
             {{ group.month }}
           </h3>
@@ -131,7 +143,7 @@ onMounted(async () => {
             <p class="text-sm font-medium text-slate-900">
               {{ vacation.user.name }}
             </p>
-            <p class="text-sm text-slate-600">
+            <p class="text-sm text-slate-600 sm:text-right">
               {{ formatDate(vacation.startDate) }} -
               {{ formatDate(vacation.endDate) }}
             </p>
