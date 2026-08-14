@@ -104,6 +104,30 @@ vacationRequestsRouter.post(
   },
 );
 
+vacationRequestsRouter.get("/team-planning", requireAuth, async (_req, res) => {
+  const vacationRequestRepository =
+    AppDataSource.getRepository(VacationRequest);
+
+  const teamVacationRequests = await vacationRequestRepository
+    .createQueryBuilder("vacationRequest")
+    .leftJoinAndSelect("vacationRequest.user", "user")
+    .select([
+      "vacationRequest.id",
+      "vacationRequest.startDate",
+      "vacationRequest.endDate",
+      "vacationRequest.status",
+      "user.id",
+      "user.name",
+    ])
+    .where("vacationRequest.status = :status", {
+      status: VacationRequestStatus.APPROVED,
+    })
+    .orderBy("vacationRequest.startDate", "ASC")
+    .getMany();
+
+  res.status(200).json(teamVacationRequests);
+});
+
 vacationRequestsRouter.get(
   "/",
   requireAuth,

@@ -45,6 +45,12 @@ const handleLogout = async (): Promise<void> => {
             to="/validator"
             >Validator Dashboard</RouterLink
           >
+          <RouterLink
+            v-if="isAuthenticated"
+            class="hover:text-slate-900"
+            to="/team-planning"
+            >Team Planning</RouterLink
+          >
           <Button
             v-if="isAuthenticated"
             type="button"

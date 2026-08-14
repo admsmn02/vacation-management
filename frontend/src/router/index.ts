@@ -4,6 +4,7 @@ import type { UserRole } from "@/types/auth.types";
 
 import LoginView from "../views/LoginView.vue";
 import RequesterDashboardView from "../views/RequesterDashboardView.vue";
+import TeamPlanningView from "../views/TeamPlanningView.vue";
 import ValidatorDashboardView from "../views/ValidatorDashboardView.vue";
 
 const router = createRouter({
@@ -27,6 +28,12 @@ const router = createRouter({
       name: "validator-dashboard",
       component: ValidatorDashboardView,
       meta: { requiresAuth: true, requiredRole: "VALIDATOR" as UserRole },
+    },
+    {
+      path: "/team-planning",
+      name: "team-planning",
+      component: TeamPlanningView,
+      meta: { requiresAuth: true },
     },
   ],
 });
