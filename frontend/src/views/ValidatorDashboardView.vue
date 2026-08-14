@@ -48,6 +48,13 @@ const limit = ref(10);
 const total = ref(0);
 const totalPages = ref(1);
 
+const processingRequestIds = ref<string[]>([]);
+const actionErrorById = ref<Record<string, string>>({});
+const rejectingRequestId = ref<string | null>(null);
+const rejectionComment = ref("");
+const rejectFormError = ref("");
+const openActionMenuRequestId = ref<string | null>(null);
+
 const availableUsers = computed(() => {
   return Object.values(availableUsersMap.value).sort((a, b) =>
     a.name.localeCompare(b.name),
@@ -79,6 +86,160 @@ const getStatusBadgeClass = (status: VacationRequestStatus): string => {
 
 const formatDate = (value: string): string => {
   return new Date(value).toLocaleDateString();
+};
+
+const isProcessingRequest = (requestId: string): boolean => {
+  return processingRequestIds.value.includes(requestId);
+};
+
+const setRequestProcessing = (
+  requestId: string,
+  isProcessing: boolean,
+): void => {
+  if (isProcessing) {
+    if (!processingRequestIds.value.includes(requestId)) {
+      processingRequestIds.value.push(requestId);
+    }
+    return;
+  }
+
+  processingRequestIds.value = processingRequestIds.value.filter(
+    (id) => id !== requestId,
+  );
+};
+
+const clearActionError = (requestId: string): void => {
+  if (!actionErrorById.value[requestId]) {
+    return;
+  }
+
+  const nextErrors = { ...actionErrorById.value };
+  delete nextErrors[requestId];
+  actionErrorById.value = nextErrors;
+};
+
+const setActionError = (requestId: string, message: string): void => {
+  actionErrorById.value = {
+    ...actionErrorById.value,
+    [requestId]: message,
+  };
+};
+
+const updateRequestInList = (
+  requestId: string,
+  patch: Partial<VacationRequestItem>,
+): void => {
+  const index = requests.value.findIndex((request) => request.id === requestId);
+  if (index < 0) {
+    return;
+  }
+
+  requests.value[index] = {
+    ...requests.value[index],
+    ...patch,
+  };
+};
+
+const approveRequest = async (requestId: string): Promise<void> => {
+  clearActionError(requestId);
+  setRequestProcessing(requestId, true);
+
+  try {
+    await apiClient.patch(
+      `/vacation-requests/${requestId}/approve`,
+      {},
+      {
+        headers: getAuthHeaders(),
+      },
+    );
+
+    updateRequestInList(requestId, {
+      status: "APPROVED",
+      comments: null,
+    });
+    await fetchVacationRequests();
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      setActionError(
+        requestId,
+        (error.response?.data as { message?: string } | undefined)?.message ||
+          "Failed to approve vacation request.",
+      );
+    } else {
+      setActionError(requestId, "Failed to approve vacation request.");
+    }
+  } finally {
+    setRequestProcessing(requestId, false);
+  }
+};
+
+const openRejectForm = (requestId: string): void => {
+  clearActionError(requestId);
+  rejectFormError.value = "";
+  rejectingRequestId.value = requestId;
+  rejectionComment.value = "";
+  openActionMenuRequestId.value = null;
+};
+
+const cancelRejectForm = (): void => {
+  rejectingRequestId.value = null;
+  rejectionComment.value = "";
+  rejectFormError.value = "";
+};
+
+const toggleActionMenu = (requestId: string): void => {
+  openActionMenuRequestId.value =
+    openActionMenuRequestId.value === requestId ? null : requestId;
+};
+
+const closeActionMenu = (): void => {
+  openActionMenuRequestId.value = null;
+};
+
+const submitRejectRequest = async (requestId: string): Promise<void> => {
+  clearActionError(requestId);
+  rejectFormError.value = "";
+
+  const trimmedComment = rejectionComment.value.trim();
+  if (!trimmedComment) {
+    rejectFormError.value = "Rejection comment is required.";
+    return;
+  }
+
+  setRequestProcessing(requestId, true);
+
+  try {
+    await apiClient.patch(
+      `/vacation-requests/${requestId}/reject`,
+      {
+        comments: trimmedComment,
+      },
+      {
+        headers: getAuthHeaders(),
+      },
+    );
+
+    updateRequestInList(requestId, {
+      status: "REJECTED",
+      comments: trimmedComment,
+    });
+    cancelRejectForm();
+    await fetchVacationRequests();
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      setActionError(
+        requestId,
+        (error.response?.data as { message?: string } | undefined)?.message ||
+          "Failed to reject vacation request.",
+      );
+      rejectFormError.value = actionErrorById.value[requestId] || "";
+    } else {
+      setActionError(requestId, "Failed to reject vacation request.");
+      rejectFormError.value = "Failed to reject vacation request.";
+    }
+  } finally {
+    setRequestProcessing(requestId, false);
+  }
 };
 
 const fetchVacationRequests = async (): Promise<void> => {
@@ -229,21 +390,29 @@ onMounted(async () => {
         <thead class="bg-slate-50 text-slate-700">
           <tr>
             <th class="px-3 py-2 font-medium">Requester</th>
-            <th class="px-3 py-2 font-medium">Email</th>
-            <th class="px-3 py-2 font-medium">Start Date</th>
-            <th class="px-3 py-2 font-medium">End Date</th>
+            <th class="px-3 py-2 font-medium">Dates</th>
             <th class="px-3 py-2 font-medium">Reason</th>
             <th class="px-3 py-2 font-medium">Status</th>
+            <th class="px-3 py-2 font-medium">Comment</th>
             <th class="px-3 py-2 font-medium">Created</th>
+            <th class="px-3 py-2 font-medium">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-for="request in requests" :key="request.id">
-            <td class="px-3 py-3">{{ request.user.name }}</td>
-            <td class="px-3 py-3">{{ request.user.email }}</td>
-            <td class="px-3 py-3">{{ formatDate(request.startDate) }}</td>
-            <td class="px-3 py-3">{{ formatDate(request.endDate) }}</td>
-            <td class="px-3 py-3">{{ request.reason || "-" }}</td>
+            <td class="px-3 py-3">
+              <p class="font-medium text-slate-900">{{ request.user.name }}</p>
+              <p class="text-xs text-slate-600">{{ request.user.email }}</p>
+            </td>
+            <td class="px-3 py-3 text-xs text-slate-700 sm:text-sm">
+              <p class="whitespace-nowrap">
+                {{ formatDate(request.startDate) }}
+              </p>
+              <p class="whitespace-nowrap">{{ formatDate(request.endDate) }}</p>
+            </td>
+            <td class="max-w-[220px] px-3 py-3">
+              <p class="line-clamp-2">{{ request.reason || "-" }}</p>
+            </td>
             <td class="px-3 py-3">
               <span
                 class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -252,10 +421,111 @@ onMounted(async () => {
                 {{ request.status }}
               </span>
             </td>
+            <td class="px-3 py-3 text-slate-600">
+              {{
+                request.status === "REJECTED" ? request.comments || "-" : "-"
+              }}
+            </td>
             <td class="px-3 py-3">{{ formatDate(request.createdAt) }}</td>
+            <td class="px-3 py-3 align-top">
+              <div v-if="request.status === 'PENDING'" class="relative">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  title="Open actions"
+                  :disabled="isLoading || isProcessingRequest(request.id)"
+                  @click="toggleActionMenu(request.id)"
+                >
+                  Actions
+                </Button>
+
+                <div
+                  v-if="openActionMenuRequestId === request.id"
+                  class="absolute right-0 z-10 mt-2 w-40 rounded-md border border-slate-200 bg-white p-1 shadow-lg"
+                >
+                  <button
+                    type="button"
+                    class="block w-full rounded px-3 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                    :disabled="isLoading || isProcessingRequest(request.id)"
+                    @click="approveRequest(request.id)"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    class="mt-1 block w-full rounded px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    :disabled="isLoading || isProcessingRequest(request.id)"
+                    @click="openRejectForm(request.id)"
+                  >
+                    Reject
+                  </button>
+                </div>
+
+                <p
+                  v-if="actionErrorById[request.id]"
+                  class="mt-2 max-w-[180px] text-xs text-red-600"
+                >
+                  {{ actionErrorById[request.id] }}
+                </p>
+              </div>
+              <span v-else class="text-xs text-slate-500">-</span>
+            </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div
+      v-if="rejectingRequestId"
+      class="fixed inset-0 z-20 flex items-center justify-center bg-black/30 px-4"
+      @click.self="cancelRejectForm"
+    >
+      <div
+        class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
+      >
+        <h3 class="text-base font-semibold text-slate-900">
+          Reject vacation request
+        </h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Provide a rejection comment before submitting.
+        </p>
+
+        <div class="mt-3 space-y-2">
+          <label class="block text-sm font-medium text-slate-700">
+            Rejection comment
+          </label>
+          <textarea
+            v-model="rejectionComment"
+            rows="3"
+            class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="Enter rejection reason"
+            :disabled="isProcessingRequest(rejectingRequestId)"
+          />
+          <p v-if="rejectFormError" class="text-sm text-red-600">
+            {{ rejectFormError }}
+          </p>
+        </div>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            :disabled="isProcessingRequest(rejectingRequestId)"
+            @click="cancelRejectForm"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            :disabled="isProcessingRequest(rejectingRequestId)"
+            @click="submitRejectRequest(rejectingRequestId)"
+          >
+            Reject Request
+          </Button>
+        </div>
+      </div>
     </div>
 
     <div
