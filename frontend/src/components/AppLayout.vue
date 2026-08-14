@@ -45,13 +45,13 @@ const handleLogout = async (): Promise<void> => {
             v-if="authenticatedRole === 'REQUESTER'"
             class="rounded-md px-2 py-1 hover:bg-slate-100 hover:text-slate-900"
             to="/requester"
-            >Requester Dashboard</RouterLink
+            >Dashboard</RouterLink
           >
           <RouterLink
             v-if="authenticatedRole === 'VALIDATOR'"
             class="rounded-md px-2 py-1 hover:bg-slate-100 hover:text-slate-900"
             to="/validator"
-            >Validator Dashboard</RouterLink
+            >Dashboard</RouterLink
           >
           <RouterLink
             v-if="isAuthenticated"

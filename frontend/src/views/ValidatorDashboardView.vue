@@ -324,9 +324,6 @@ onMounted(async () => {
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
       Validator Dashboard
     </h1>
-    <p class="mt-1.5 text-sm text-slate-600">
-      Review vacation requests submitted by requesters.
-    </p>
 
     <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
       <div class="space-y-1">

@@ -97,9 +97,7 @@ onMounted(async () => {
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
       Team Vacation Planning
     </h1>
-    <p class="mt-1.5 text-sm text-slate-600">
-      Approved team vacations grouped by month.
-    </p>
+    <p class="mt-1.5 text-sm text-slate-600">Approved team vacations.</p>
 
     <div
       v-if="isLoading"
