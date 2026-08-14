@@ -2,6 +2,8 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 
 import { env } from "./env";
+import { User } from "../entities/user.entity";
+import { VacationRequest } from "../entities/vacation-request.entity";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -12,7 +14,7 @@ export const AppDataSource = new DataSource({
   database: env.dbName,
   synchronize: false,
   logging: false,
-  entities: [],
-  migrations: [],
+  entities: [User, VacationRequest],
+  migrations: ["src/migrations/*.{ts,js}", "dist/migrations/*.{ts,js}"],
   subscribers: [],
 });
