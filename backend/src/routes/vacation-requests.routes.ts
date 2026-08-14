@@ -1,5 +1,13 @@
 import { Router } from "express";
 
+import { ApproveVacationRequestCommand } from "../application/commands/approve-vacation-request.command";
+import { CreateVacationRequestCommand } from "../application/commands/create-vacation-request.command";
+import { RejectVacationRequestCommand } from "../application/commands/reject-vacation-request.command";
+import { InMemoryEventDispatcher } from "../application/event-dispatcher/in-memory-event-dispatcher";
+import { ApplicationError } from "../application/errors/application-error";
+import { ApproveVacationRequestHandler } from "../application/handlers/approve-vacation-request.handler";
+import { CreateVacationRequestHandler } from "../application/handlers/create-vacation-request.handler";
+import { RejectVacationRequestHandler } from "../application/handlers/reject-vacation-request.handler";
 import { AppDataSource } from "../config/data-source";
 import { VacationRequest } from "../entities/vacation-request.entity";
 import { VacationRequestStatus } from "../enums/vacation-request-status.enum";
@@ -8,22 +16,37 @@ import { requireAuth, requireRole } from "../middleware/auth.middleware";
 
 const vacationRequestsRouter = Router();
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const eventDispatcher = new InMemoryEventDispatcher();
+const vacationRequestRepository = AppDataSource.getRepository(VacationRequest);
 
-const isValidDateString = (value: string): boolean => {
-  if (!DATE_PATTERN.test(value)) {
-    return false;
+const createVacationRequestHandler = new CreateVacationRequestHandler(
+  vacationRequestRepository,
+  eventDispatcher,
+);
+const approveVacationRequestHandler = new ApproveVacationRequestHandler(
+  vacationRequestRepository,
+  eventDispatcher,
+);
+const rejectVacationRequestHandler = new RejectVacationRequestHandler(
+  vacationRequestRepository,
+  eventDispatcher,
+);
+
+const handleApplicationError = (
+  error: unknown,
+  fallbackMessage: string,
+): { statusCode: number; message: string } => {
+  if (error instanceof ApplicationError) {
+    return {
+      statusCode: error.statusCode,
+      message: error.message,
+    };
   }
 
-  const parsedDate = new Date(`${value}T00:00:00.000Z`);
-  return (
-    !Number.isNaN(parsedDate.getTime()) &&
-    parsedDate.toISOString().startsWith(value)
-  );
-};
-
-const getTodayDateString = (): string => {
-  return new Date().toISOString().slice(0, 10);
+  return {
+    statusCode: 500,
+    message: fallbackMessage,
+  };
 };
 
 vacationRequestsRouter.post(
@@ -42,23 +65,6 @@ vacationRequestsRouter.post(
       return;
     }
 
-    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
-      res.status(400).json({
-        message: "startDate and endDate must be valid YYYY-MM-DD dates",
-      });
-      return;
-    }
-
-    if (endDate <= startDate) {
-      res.status(400).json({ message: "endDate must be after startDate" });
-      return;
-    }
-
-    if (startDate < getTodayDateString()) {
-      res.status(400).json({ message: "Requests in the past are not allowed" });
-      return;
-    }
-
     if (reason !== undefined && typeof reason !== "string") {
       res
         .status(400)
@@ -72,35 +78,24 @@ vacationRequestsRouter.post(
       return;
     }
 
-    const vacationRequestRepository =
-      AppDataSource.getRepository(VacationRequest);
+    try {
+      const command = new CreateVacationRequestCommand(
+        userId,
+        startDate,
+        endDate,
+        reason?.trim() || "",
+      );
+      const savedVacationRequest =
+        await createVacationRequestHandler.execute(command);
 
-    const overlappingRequest = await vacationRequestRepository
-      .createQueryBuilder("vacationRequest")
-      .where("vacationRequest.userId = :userId", { userId })
-      .andWhere("vacationRequest.startDate <= :endDate", { endDate })
-      .andWhere("vacationRequest.endDate >= :startDate", { startDate })
-      .getOne();
-
-    if (overlappingRequest) {
-      res
-        .status(400)
-        .json({ message: "Vacation request overlaps an existing request" });
-      return;
+      res.status(201).json(savedVacationRequest);
+    } catch (error) {
+      const handled = handleApplicationError(
+        error,
+        "Failed to create vacation request",
+      );
+      res.status(handled.statusCode).json({ message: handled.message });
     }
-
-    const vacationRequest = vacationRequestRepository.create({
-      userId,
-      startDate,
-      endDate,
-      reason: reason?.trim() || "",
-      status: VacationRequestStatus.PENDING,
-      comments: null,
-    });
-
-    const savedVacationRequest =
-      await vacationRequestRepository.save(vacationRequest);
-    res.status(201).json(savedVacationRequest);
   },
 );
 
@@ -242,30 +237,20 @@ vacationRequestsRouter.patch(
   requireRole(UserRole.VALIDATOR),
   async (req, res) => {
     const { id } = req.params;
-    const vacationRequestRepository =
-      AppDataSource.getRepository(VacationRequest);
 
-    const vacationRequest = await vacationRequestRepository.findOne({
-      where: { id },
-    });
+    try {
+      const command = new ApproveVacationRequestCommand(id);
+      const savedVacationRequest =
+        await approveVacationRequestHandler.execute(command);
 
-    if (!vacationRequest) {
-      res.status(404).json({ message: "Vacation request not found" });
-      return;
+      res.status(200).json(savedVacationRequest);
+    } catch (error) {
+      const handled = handleApplicationError(
+        error,
+        "Failed to approve vacation request",
+      );
+      res.status(handled.statusCode).json({ message: handled.message });
     }
-
-    if (vacationRequest.status !== VacationRequestStatus.PENDING) {
-      res
-        .status(400)
-        .json({ message: "Only pending requests can be approved" });
-      return;
-    }
-
-    vacationRequest.status = VacationRequestStatus.APPROVED;
-    const savedVacationRequest =
-      await vacationRequestRepository.save(vacationRequest);
-
-    res.status(200).json(savedVacationRequest);
   },
 );
 
@@ -277,38 +262,26 @@ vacationRequestsRouter.patch(
     const { id } = req.params;
     const { comments } = req.body as { comments?: unknown };
 
-    if (typeof comments !== "string" || !comments.trim()) {
+    if (typeof comments !== "string") {
       res
         .status(400)
         .json({ message: "comments is required and cannot be empty" });
       return;
     }
 
-    const vacationRequestRepository =
-      AppDataSource.getRepository(VacationRequest);
+    try {
+      const command = new RejectVacationRequestCommand(id, comments);
+      const savedVacationRequest =
+        await rejectVacationRequestHandler.execute(command);
 
-    const vacationRequest = await vacationRequestRepository.findOne({
-      where: { id },
-    });
-
-    if (!vacationRequest) {
-      res.status(404).json({ message: "Vacation request not found" });
-      return;
+      res.status(200).json(savedVacationRequest);
+    } catch (error) {
+      const handled = handleApplicationError(
+        error,
+        "Failed to reject vacation request",
+      );
+      res.status(handled.statusCode).json({ message: handled.message });
     }
-
-    if (vacationRequest.status !== VacationRequestStatus.PENDING) {
-      res
-        .status(400)
-        .json({ message: "Only pending requests can be rejected" });
-      return;
-    }
-
-    vacationRequest.status = VacationRequestStatus.REJECTED;
-    vacationRequest.comments = comments.trim();
-    const savedVacationRequest =
-      await vacationRequestRepository.save(vacationRequest);
-
-    res.status(200).json(savedVacationRequest);
   },
 );
 
