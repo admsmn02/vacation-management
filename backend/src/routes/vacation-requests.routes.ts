@@ -43,11 +43,9 @@ vacationRequestsRouter.post(
     }
 
     if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
-      res
-        .status(400)
-        .json({
-          message: "startDate and endDate must be valid YYYY-MM-DD dates",
-        });
+      res.status(400).json({
+        message: "startDate and endDate must be valid YYYY-MM-DD dates",
+      });
       return;
     }
 
@@ -107,6 +105,90 @@ vacationRequestsRouter.post(
 );
 
 vacationRequestsRouter.get(
+  "/",
+  requireAuth,
+  requireRole(UserRole.VALIDATOR),
+  async (req, res) => {
+    const { status, userId, page, limit } = req.query as {
+      status?: string;
+      userId?: string;
+      page?: string;
+      limit?: string;
+    };
+
+    if (
+      status !== undefined &&
+      status !== VacationRequestStatus.PENDING &&
+      status !== VacationRequestStatus.APPROVED &&
+      status !== VacationRequestStatus.REJECTED
+    ) {
+      res.status(400).json({ message: "Invalid status filter" });
+      return;
+    }
+
+    const parsedPage = page ? Number.parseInt(page, 10) : 1;
+    const parsedLimit = limit ? Number.parseInt(limit, 10) : 10;
+
+    if (
+      !Number.isInteger(parsedPage) ||
+      !Number.isInteger(parsedLimit) ||
+      parsedPage < 1 ||
+      parsedLimit < 1
+    ) {
+      res
+        .status(400)
+        .json({ message: "page and limit must be positive integers" });
+      return;
+    }
+
+    const vacationRequestRepository =
+      AppDataSource.getRepository(VacationRequest);
+
+    const queryBuilder = vacationRequestRepository
+      .createQueryBuilder("vacationRequest")
+      .leftJoinAndSelect("vacationRequest.user", "user")
+      .select([
+        "vacationRequest.id",
+        "vacationRequest.userId",
+        "vacationRequest.startDate",
+        "vacationRequest.endDate",
+        "vacationRequest.reason",
+        "vacationRequest.status",
+        "vacationRequest.comments",
+        "vacationRequest.createdAt",
+        "vacationRequest.updatedAt",
+        "user.id",
+        "user.name",
+        "user.email",
+        "user.role",
+      ])
+      .orderBy("vacationRequest.createdAt", "DESC");
+
+    if (status) {
+      queryBuilder.andWhere("vacationRequest.status = :status", { status });
+    }
+
+    if (userId) {
+      queryBuilder.andWhere("vacationRequest.userId = :userId", { userId });
+    }
+
+    const total = await queryBuilder.getCount();
+    const items = await queryBuilder
+      .skip((parsedPage - 1) * parsedLimit)
+      .take(parsedLimit)
+      .getMany();
+
+    res.status(200).json({
+      items,
+      page: parsedPage,
+      limit: parsedLimit,
+      total,
+      totalPages: Math.ceil(total / parsedLimit),
+    });
+  },
+);
+
+vacationRequestsRouter.get(
   "/me",
   requireAuth,
   requireRole(UserRole.REQUESTER),
@@ -127,6 +209,82 @@ vacationRequestsRouter.get(
     });
 
     res.status(200).json(vacationRequests);
+  },
+);
+
+vacationRequestsRouter.patch(
+  "/:id/approve",
+  requireAuth,
+  requireRole(UserRole.VALIDATOR),
+  async (req, res) => {
+    const { id } = req.params;
+    const vacationRequestRepository =
+      AppDataSource.getRepository(VacationRequest);
+
+    const vacationRequest = await vacationRequestRepository.findOne({
+      where: { id },
+    });
+
+    if (!vacationRequest) {
+      res.status(404).json({ message: "Vacation request not found" });
+      return;
+    }
+
+    if (vacationRequest.status !== VacationRequestStatus.PENDING) {
+      res
+        .status(400)
+        .json({ message: "Only pending requests can be approved" });
+      return;
+    }
+
+    vacationRequest.status = VacationRequestStatus.APPROVED;
+    const savedVacationRequest =
+      await vacationRequestRepository.save(vacationRequest);
+
+    res.status(200).json(savedVacationRequest);
+  },
+);
+
+vacationRequestsRouter.patch(
+  "/:id/reject",
+  requireAuth,
+  requireRole(UserRole.VALIDATOR),
+  async (req, res) => {
+    const { id } = req.params;
+    const { comments } = req.body as { comments?: unknown };
+
+    if (typeof comments !== "string" || !comments.trim()) {
+      res
+        .status(400)
+        .json({ message: "comments is required and cannot be empty" });
+      return;
+    }
+
+    const vacationRequestRepository =
+      AppDataSource.getRepository(VacationRequest);
+
+    const vacationRequest = await vacationRequestRepository.findOne({
+      where: { id },
+    });
+
+    if (!vacationRequest) {
+      res.status(404).json({ message: "Vacation request not found" });
+      return;
+    }
+
+    if (vacationRequest.status !== VacationRequestStatus.PENDING) {
+      res
+        .status(400)
+        .json({ message: "Only pending requests can be rejected" });
+      return;
+    }
+
+    vacationRequest.status = VacationRequestStatus.REJECTED;
+    vacationRequest.comments = comments.trim();
+    const savedVacationRequest =
+      await vacationRequestRepository.save(vacationRequest);
+
+    res.status(200).json(savedVacationRequest);
   },
 );
 
